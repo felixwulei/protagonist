@@ -9,6 +9,10 @@ import os
 import json
 import uuid
 
+APP_VERSION = "0.1.0"
+PROXY_URL_DEFAULT = "https://proxy.protagonist.app/v1"
+GITHUB_REPO = "felixwulei/protagonist"
+
 CONFIG_DIR = os.path.expanduser("~/.protagonist")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 DB_PATH = os.path.join(CONFIG_DIR, "protagonist.db")
@@ -34,6 +38,7 @@ DEFAULT_TOOLS = {
     "music_previous": True,
     "music_now_playing": True,
     "music_search_play": True,
+    "create_document": True,
 }
 
 _config: dict | None = None
@@ -59,8 +64,9 @@ def load() -> dict:
     # Fill in defaults
     _config.setdefault("device_id", str(uuid.uuid4()))
     _config.setdefault("telegram_bot_token", "")
-    _config.setdefault("api_key", "")  # Our proxy API key (future)
-    _config.setdefault("openai_api_key", "")  # Direct OpenAI key (for now)
+    _config.setdefault("proxy_url", PROXY_URL_DEFAULT)
+    _config.setdefault("openai_api_key", "")  # Direct OpenAI key (fallback)
+    _config.setdefault("openrouter_api_key", "")
     _config.setdefault("llm_model", "gpt-4o-mini")
     _config.setdefault("tools", DEFAULT_TOOLS.copy())
     _config.setdefault("setup_complete", False)

@@ -9,6 +9,9 @@ import os
 import sys
 import asyncio
 import threading
+import json
+import urllib.request
+import webbrowser
 
 # Ensure project root is in path
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,6 +36,7 @@ TOOL_CATEGORIES = {
         "music_play", "music_pause", "music_next", "music_previous",
         "music_now_playing", "music_search_play",
     ],
+    "Documents": ["create_document"],
 }
 
 
@@ -146,7 +150,12 @@ class ProtagonistApp(rumps.App):
             return
 
         # Set env vars for the agent to use
+        proxy_url = config.get("proxy_url", "")
+        if proxy_url:
+            os.environ["PROXY_URL"] = proxy_url
+            os.environ["DEVICE_ID"] = config.get("device_id", "")
         os.environ["OPENAI_API_KEY"] = config.get("openai_api_key", "")
+        os.environ["OPENROUTER_API_KEY"] = config.get("openrouter_api_key", "")
         os.environ["LLM_MODEL"] = config.get("llm_model", "gpt-4o-mini")
 
         def run():
@@ -171,6 +180,56 @@ class ProtagonistApp(rumps.App):
         rumps.quit_application()
 
 
+# --------------- Auto-Update ---------------
+
+def _check_for_updates():
+    """Check GitHub Releases for a newer version (runs in background)."""
+    try:
+        from app.config import APP_VERSION, GITHUB_REPO
+
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+        req = urllib.request.Request(
+            url, headers={"Accept": "application/vnd.github.v3+json"},
+        )
+        resp = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(resp.read().decode())
+
+        latest_tag = data.get("tag_name", "")
+        # Strip leading 'v' for comparison
+        latest_ver = latest_tag.lstrip("v")
+        if not latest_ver or latest_ver == APP_VERSION:
+            return
+
+        # Simple version comparison (works for semver)
+        from packaging.version import Version
+        try:
+            if Version(latest_ver) <= Version(APP_VERSION):
+                return
+        except Exception:
+            # If packaging not available, do string comparison
+            if latest_ver <= APP_VERSION:
+                return
+
+        download_url = data.get("html_url", "")
+        print(f"[update] New version available: {latest_ver} (current: {APP_VERSION})")
+
+        # Show update dialog on main thread
+        def _notify(_):
+            resp = rumps.alert(
+                title="Update Available",
+                message=f"Protagonist {latest_ver} is available (you have {APP_VERSION}).\n\nWould you like to download it?",
+                ok="Download",
+                cancel="Later",
+            )
+            if resp == 1 and download_url:
+                webbrowser.open(download_url)
+
+        rumps.Timer(_notify, 2).start()
+
+    except Exception as e:
+        print(f"[update] Check failed: {e}")
+
+
 # --------------- Entry Point ---------------
 
 def main():
@@ -179,6 +238,9 @@ def main():
     cfg = config.load()
     print(f"[protagonist] Device: {cfg.get('device_id', 'unknown')[:8]}...")
     print(f"[protagonist] Setup complete: {config.is_setup_complete()}")
+
+    # Check for updates in background
+    threading.Thread(target=_check_for_updates, daemon=True).start()
 
     app = ProtagonistApp()
 

@@ -16,6 +16,7 @@ OPTIONS = {
         "NSAppleEventsUsageDescription": "Protagonist needs AppleScript access to control apps on your behalf.",
         "NSCalendarsUsageDescription": "Protagonist needs calendar access to read your events.",
         "NSRemindersUsageDescription": "Protagonist needs reminders access to create reminders for you.",
+        "NSMicrophoneUsageDescription": "Protagonist needs microphone access for voice messages.",
     },
     "packages": ["openai", "telegram", "httpcore", "httpx", "anyio", "certifi"],
     "includes": [

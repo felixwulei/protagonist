@@ -2,6 +2,7 @@
 build/
 dist/
 *.egg-info/
+.eggs/
 
 # Python
 __pycache__/
@@ -13,6 +14,9 @@ __pycache__/
 
 # Config (contains API keys)
 .env
+
+# Temp files
+random_image.txt
 
 # macOS
 .DS_Store

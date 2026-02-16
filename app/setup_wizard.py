@@ -2,11 +2,33 @@
 from __future__ import annotations
 
 import webbrowser
+import urllib.request
+import json
 import rumps
 
 from app import config
 
 BOTFATHER_URL = "https://t.me/BotFather"
+
+
+def _register_device(device_id: str, proxy_url: str):
+    """Register device with the proxy server (best-effort)."""
+    if not proxy_url:
+        return
+    try:
+        # Strip /v1 suffix to get base, then add /v1/register
+        base = proxy_url.rstrip("/")
+        if base.endswith("/v1"):
+            base = base[:-3]
+        url = f"{base}/v1/register"
+
+        data = json.dumps({"device_id": device_id}).encode()
+        req = urllib.request.Request(
+            url, data=data, headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(req, timeout=10)
+    except Exception:
+        pass  # Best-effort — proxy may not be up yet
 
 
 def run_setup() -> bool:
@@ -68,26 +90,13 @@ def run_setup() -> bool:
         )
         return False
 
-    # Step 4: Get OpenAI API key (for now, until we have our proxy)
-    win = rumps.Window(
-        title="OpenAI API Key",
-        message=(
-            "Paste your OpenAI API key:\n"
-            "(Get one at platform.openai.com/api-keys)\n\n"
-            "This is temporary — future versions won't need it."
-        ),
-        default_text="",
-        ok="Save",
-        cancel="Skip",
-        dimensions=(400, 24),
-    )
-    response = win.run()
-    openai_key = response.text.strip() if response.clicked else ""
+    # Step 4: Register device with proxy
+    device_id = config.get("device_id", "")
+    if device_id:
+        _register_device(device_id, config.get("proxy_url", ""))
 
     # Step 5: Save config
     config.set("telegram_bot_token", token)
-    if openai_key:
-        config.set("openai_api_key", openai_key)
     config.set("setup_complete", True)
     config.save()
 
